@@ -1,0 +1,43 @@
+/*
+  NEXUS design system — deliberately two colors, used everywhere:
+
+    --ink     near-black, the entire surface of the product (Fire TV and web)
+    --signal  a single amber accent, used for every interactive or
+              attention-worthy element, at varying opacity/intensity rather
+              than swapping in a second "alert color"
+
+  White/gray text tones are neutrals required for legibility, not brand
+  colors — they never carry meaning on their own.
+*/
+
+:root {
+  --ink-950: #0a0c10;
+  --ink-900: #12151b;
+  --ink-800: #1a1e26;
+  --ink-700: #2a2f3a;
+  --paper: #f5f6f8;
+  --paper-dim: #9aa1ad;
+  --signal: #e8a33d;
+  --signal-dim: rgba(232, 163, 61, 0.35);
+  --signal-glow: rgba(232, 163, 61, 0.18);
+
+  --radius: 18px;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--ink-950);
+  color: var(--paper);
+  font-family: var(--font-sans);
+}
+
+body {
+  min-height: 100vh;
+}
