@@ -41,21 +41,30 @@ export const rules: HouseholdRule[] = [
 
 export const expectedVisitors: ExpectedVisitor[] = [];
 
-export const reminders: Reminder[] = [
-  {
+function seedReminder(): Reminder {
+  return {
     id: "rem-1",
     memberId: "mem-mom",
     label: "Evening medication",
     // Seeded 100 minutes overdue so it's already past the 90-minute
-    // check-in threshold the moment the server starts, regardless of when
-    // scripts/demo.mjs care is actually run against it.
+    // check-in threshold the moment the server (re)starts, regardless of
+    // when scripts/demo.mjs care is actually run against it.
     dueAt: new Date(Date.now() - 100 * 60_000).toISOString(),
     acknowledged: false,
-  },
-];
+  };
+}
 
+export const reminders: Reminder[] = [seedReminder()];
 export const events: HouseholdEvent[] = [];
 export const alerts: Alert[] = [];
+
+/** Restores the household to its seeded demo state without restarting the process — for retakes. */
+export function resetHousehold(): void {
+  events.length = 0;
+  alerts.length = 0;
+  reminders.length = 0;
+  reminders.push(seedReminder());
+}
 
 export function addEvent(event: Omit<HouseholdEvent, "id">): HouseholdEvent {
   const full: HouseholdEvent = { id: randomUUID(), ...event };

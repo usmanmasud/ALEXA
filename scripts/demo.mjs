@@ -21,7 +21,11 @@ if (scenario === "door") {
 } else if (scenario === "care") {
   // Simulates a missed medication reminder with no follow-up activity.
   await ring("reminder.missed", { memberId: "mem-mom", reminderId: "rem-1" });
+} else if (scenario === "reset") {
+  // Restores seeded demo state between takes without restarting the server.
+  const res = await fetch(`${BASE}/api/reset`, { method: "POST" });
+  console.log(await res.json());
 } else {
-  console.error(`Unknown scenario "${scenario}". Use "door" or "care".`);
+  console.error(`Unknown scenario "${scenario}". Use "door", "care", or "reset".`);
   process.exit(1);
 }

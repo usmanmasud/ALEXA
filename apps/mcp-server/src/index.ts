@@ -5,7 +5,7 @@ import cors from "cors";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { createNexusServer } from "./server-factory.js";
-import { addEvent, alerts, events } from "./store.js";
+import { addEvent, alerts, events, resetHousehold } from "./store.js";
 import { processEvent } from "./context-engine.js";
 import { getFireTvView, setFireTvView } from "./firetv-state.js";
 import { computeHomeStatus } from "./home-status.js";
@@ -80,6 +80,14 @@ app.get("/api/firetv-view", (_req, res) => {
 app.post("/api/acknowledge/:alertId", (req, res) => {
   const alert = alerts.find((a) => a.id === req.params.alertId);
   if (alert) alert.resolved = true;
+  setFireTvView({ view: "status" });
+  res.json({ ok: true });
+});
+
+// Resets in-memory demo state without restarting the process — for retakes
+// while recording the submission video.
+app.post("/api/reset", (_req, res) => {
+  resetHousehold();
   setFireTvView({ view: "status" });
   res.json({ ok: true });
 });
