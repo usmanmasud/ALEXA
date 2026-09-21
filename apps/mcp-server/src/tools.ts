@@ -119,7 +119,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ memberId }) => {
       const member = members.find((m) => m.id === memberId);
-      const event = processEvent(
+      const event = await processEvent(
         addEvent({
           source: "system",
           type: "check_in.started",

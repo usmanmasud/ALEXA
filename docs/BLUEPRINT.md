@@ -66,10 +66,16 @@ simulated Ring webhook at `/webhooks/ring`, REST endpoints for the UI.
 **[built]** `apps/web` — Next.js kiosk view that polls the server and switches
 between a calm status screen and a full-screen alert takeover.
 
-**[planned]** Bedrock/AgentCore behind `context-engine.ts`'s `assessEvent()` for
-open-ended reasoning beyond the seeded rules (e.g. free-text household rules
-instead of hardcoded conditions). The rule-based engine is deliberately kept as
-the always-available fallback so the demo never depends on a live model call.
+**[built]** Amazon Bedrock (`apps/mcp-server/src/bedrock-reasoner.ts`) via
+`@aws-sdk/client-bedrock-runtime`'s `ConverseCommand`. Only events that fall
+through every seeded rule reach Bedrock — the rule-based engine stays the
+primary, always-available path so a demo never depends on a live model call
+succeeding. If `AWS_REGION`/model access isn't configured, or the call fails
+for any reason, `reasonWithBedrock` returns `null` and `assessEvent` falls
+back to a static default — a real integration that fails safe, not a mock.
+
+**[planned]** AgentCore for multi-step tool orchestration beyond the current
+single-shot reasoning call, if time remains.
 
 **[planned]** DynamoDB-backed store implementing the same interface as
 `store.ts`, so swapping it in touches no other file.
@@ -94,13 +100,15 @@ All **[built]** in `apps/mcp-server/src/tools.ts`, registered on a single
 
 ## 5. AWS Builder mini challenge — real usage, not a logo
 
-Planned integrations, each with a concrete "before/after" for the product feedback
+Status per service, each with a concrete "before/after" for the product feedback
 answer the submission requires:
 
-- **Amazon Bedrock** — reasoning fallback for events that don't match a seeded
-  rule (open-ended: "is this worth attention, and why?"). Called from
-  `context-engine.ts`, behind the existing `assessEvent()` interface.
-- **DynamoDB** — household state (see schema below), replacing `store.ts`'s
+- **Amazon Bedrock** — **[built]**. Reasoning fallback for events that don't
+  match a seeded rule (open-ended: "is this worth attention, and why?").
+  Called from `bedrock-reasoner.ts`, behind `context-engine.ts`'s
+  `assessEvent()` interface — the rest of the codebase doesn't know or care
+  whether an assessment came from a rule or a model call.
+- **DynamoDB** — **[planned]**. Household state (see schema below), replacing `store.ts`'s
   in-memory maps.
 - **Lambda** — the real Ring webhook receiver in front of the context engine
   (API Gateway → Lambda → same `processEvent()` logic, containerized or ported).
@@ -149,7 +157,7 @@ screens and any future surface (web dashboard, Alexa+ visual response, etc.).
 | 10–14 | Context engine | Rule-based reasoning for the 3 MVP flows — **done** |
 | 15–18 | Fire TV UI | Status + alert screens, polling, two-color design system — **done** |
 | 19–23 | Device integration | Real Ring webhook subscription (replace simulator), verify against a live/sandbox Ring account |
-| 24–28 | AWS deployment | DynamoDB store swap-in, Lambda + API Gateway for the webhook, Bedrock fallback reasoning |
+| 24–28 | AWS deployment | Bedrock fallback reasoning — **done**; DynamoDB store swap-in, Lambda + API Gateway for the webhook |
 | 29–31 | Alexa+ verification | Confirm MCP server works against actual Alexa+ Preview, fix protocol edge cases |
 | 32–34 | Open-source packaging | README polish, CONTRIBUTING.md, a real external contribution (PR to a public MCP-related repo) for the Open Source mini challenge |
 | 35–37 | Demo video | Script, record, edit to under 3 minutes |

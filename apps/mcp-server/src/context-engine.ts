@@ -1,11 +1,14 @@
 import type { HouseholdEvent, Severity } from "@nexus/shared";
 import { addAlert, expectedVisitors, members, minutesSince, reminders } from "./store.js";
+import { reasonWithBedrock } from "./bedrock-reasoner.js";
 
 // This is NEXUS's core differentiator: it does not surface raw events, it
 // decides whether an event deserves a human's attention, and why. The
-// scoring below is intentionally explainable (no black-box call) so the
-// reasoning can be demoed and narrated; a Bedrock/AgentCore call can sit
-// behind `explain()` later without changing the interface (see BLUEPRINT.md).
+// scoring below is intentionally explainable (no black-box call), and stays
+// the primary, always-available path so a demo never depends on a live
+// model call succeeding. Only events that fall through every seeded rule
+// (the closing `return` in `assessEventByRules`) get escalated to Bedrock
+// for open-ended reasoning — see bedrock-reasoner.ts.
 
 function isNightHours(date: Date): boolean {
   const hour = date.getHours();
@@ -27,7 +30,7 @@ interface Assessment {
   suggestedActions: string[];
 }
 
-export function assessEvent(event: HouseholdEvent): Assessment {
+function assessEventByRules(event: HouseholdEvent): Assessment | null {
   const now = new Date(event.timestamp);
 
   if (event.type === "motion" || event.type === "doorbell") {
@@ -94,16 +97,28 @@ export function assessEvent(event: HouseholdEvent): Assessment {
     };
   }
 
-  return {
-    importance: "info",
-    reasoning: "No rule matched; logged for context only.",
-    shouldAlert: false,
-    suggestedActions: [],
-  };
+  return null;
 }
 
-export function processEvent(event: HouseholdEvent): HouseholdEvent {
-  const assessment = assessEvent(event);
+const DEFAULT_ASSESSMENT: Assessment = {
+  importance: "info",
+  reasoning: "No rule matched and reasoning was unavailable; logged for context only.",
+  shouldAlert: false,
+  suggestedActions: [],
+};
+
+export async function assessEvent(event: HouseholdEvent): Promise<Assessment> {
+  const byRule = assessEventByRules(event);
+  if (byRule) return byRule;
+
+  const byBedrock = await reasonWithBedrock(event);
+  if (byBedrock) return byBedrock;
+
+  return DEFAULT_ASSESSMENT;
+}
+
+export async function processEvent(event: HouseholdEvent): Promise<HouseholdEvent> {
+  const assessment = await assessEvent(event);
   event.importance = assessment.importance;
   event.reasoning = assessment.reasoning;
 

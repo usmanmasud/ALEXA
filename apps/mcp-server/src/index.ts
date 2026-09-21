@@ -87,9 +87,9 @@ app.post("/api/acknowledge/:alertId", (req, res) => {
 // Stands in for a real Ring device/webhook subscription during judging.
 // Swap for Ring's actual event webhook without touching the context engine.
 
-app.post("/webhooks/ring", (req, res) => {
+app.post("/webhooks/ring", async (req, res) => {
   const { type = "motion", data = {} } = req.body ?? {};
-  const event = processEvent(
+  const event = await processEvent(
     addEvent({
       source: "ring",
       type,
