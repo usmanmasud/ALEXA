@@ -46,7 +46,10 @@ export const reminders: Reminder[] = [
     id: "rem-1",
     memberId: "mem-mom",
     label: "Evening medication",
-    dueAt: new Date(Date.now() - 45 * 60_000).toISOString(),
+    // Seeded 100 minutes overdue so it's already past the 90-minute
+    // check-in threshold the moment the server starts, regardless of when
+    // scripts/demo.mjs care is actually run against it.
+    dueAt: new Date(Date.now() - 100 * 60_000).toISOString(),
     acknowledged: false,
   },
 ];
