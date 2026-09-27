@@ -11,7 +11,8 @@
     "dev:mcp": "npm run dev -w apps/mcp-server",
     "dev:web": "npm run dev -w apps/web",
     "build": "npm run build -w packages/shared && npm run build -w apps/mcp-server && npm run build -w apps/web",
-    "lint": "npm run lint -w apps/mcp-server -w apps/web"
+    "lint": "npm run lint -w apps/mcp-server -w apps/web",
+    "test": "npm run build -w packages/shared && npm test -w apps/mcp-server"
   },
   "engines": {
     "node": ">=18.17"

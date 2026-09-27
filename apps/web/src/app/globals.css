@@ -41,3 +41,32 @@ body {
 body {
   min-height: 100vh;
 }
+
+/* Fire TV buttons: navigated with a D-pad, so the focused button has to be
+   unmistakable from the couch. Focus = full signal; resting = outlined. */
+.tv-button {
+  padding: 16px 32px;
+  border-radius: var(--radius);
+  border: 2px solid var(--signal-dim);
+  background: transparent;
+  color: var(--paper);
+  font: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.tv-button:focus,
+.tv-button:hover {
+  outline: none;
+  border-color: var(--signal);
+  background: var(--signal);
+  color: var(--ink-950);
+  transform: scale(1.06);
+  box-shadow: 0 0 0 6px var(--signal-glow);
+}
+
+.tv-button:disabled {
+  opacity: 0.6;
+}

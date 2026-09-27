@@ -1,3 +1,5 @@
+import { describeDecider, type NexusEvent } from "@/lib/api";
+
 interface HomeStatus {
   overall: "normal" | "attention" | "alert";
   members: { id: string; name: string }[];
@@ -6,7 +8,16 @@ interface HomeStatus {
   lastUpdated: string;
 }
 
-export function StatusScreen({ status }: { status: HomeStatus | null }) {
+const EVENT_LABELS: Record<string, string> = {
+  doorbell: "Doorbell",
+  motion: "Front-door motion",
+  "reminder.missed": "Missed reminder",
+  "door.opened.restricted": "Door opened",
+  "check_in.started": "Check-in",
+  "guardian.notified": "Guardian notified",
+};
+
+export function StatusScreen({ status, events }: { status: HomeStatus | null; events: NexusEvent[] }) {
   if (!status) {
     return (
       <main style={styles.main}>
@@ -32,7 +43,7 @@ export function StatusScreen({ status }: { status: HomeStatus | null }) {
         {status.overall === "normal" ? "All systems normal" : "Needs your attention"}
       </p>
 
-      <div style={styles.rows}>
+      <div style={{ ...styles.rows, maxWidth: 640 }}>
         {rows.map((r) => (
           <div key={r.label} style={styles.row}>
             <span style={styles.dot(r.ok ? "var(--signal)" : "var(--paper-dim)", false)} />
@@ -43,6 +54,31 @@ export function StatusScreen({ status }: { status: HomeStatus | null }) {
           </div>
         ))}
       </div>
+
+      {events.length > 0 && (
+        <section style={{ marginTop: 56, maxWidth: 900 }}>
+          <h2 style={styles.h2}>Recent decisions</h2>
+          <div style={styles.rows}>
+            {events.slice(0, 4).map((e) => (
+              <div key={e.id} style={styles.decision}>
+                <span style={styles.time}>
+                  {new Date(e.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                </span>
+                <div style={{ flex: 1 }}>
+                  <div>
+                    {EVENT_LABELS[e.type] ?? e.type}
+                    <span style={styles.decider}> · {describeDecider(e.decidedBy)}</span>
+                  </div>
+                  <div style={styles.reasoning}>{e.reasoning}</div>
+                </div>
+                <span style={{ color: e.importance === "info" ? "var(--paper-dim)" : "var(--signal)", fontSize: 16 }}>
+                  {e.importance === "info" ? "Handled quietly" : "Surfaced"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }
@@ -63,11 +99,23 @@ const styles = {
     fontWeight: 600,
   },
   h1: { fontSize: "clamp(32px, 5vw, 56px)", margin: 0, fontWeight: 700 },
+  h2: { fontSize: 14, letterSpacing: "0.3em", color: "var(--paper-dim)", fontWeight: 600, marginBottom: 16 },
+  decision: {
+    display: "flex",
+    alignItems: "center",
+    gap: 20,
+    padding: "14px 22px",
+    borderRadius: "var(--radius)",
+    border: "1px solid var(--ink-700)",
+    fontSize: 18,
+  },
+  time: { color: "var(--paper-dim)", fontSize: 16, minWidth: 72 },
+  decider: { color: "var(--paper-dim)", fontSize: 15 },
+  reasoning: { color: "var(--paper-dim)", fontSize: 16, marginTop: 4 },
   rows: {
     display: "flex",
     flexDirection: "column" as const,
-    gap: 20,
-    maxWidth: 640,
+    gap: 16,
   },
   row: {
     display: "flex",

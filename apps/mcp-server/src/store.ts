@@ -26,6 +26,18 @@ export const devices: DeviceStatus[] = [
 
 export const rules: HouseholdRule[] = [
   {
+    id: "rule-expected-visitor",
+    description: "Don't interrupt anyone for front-door activity during an expected-visitor window.",
+    condition: "event.type in (motion, doorbell) && now within an expected visitor window",
+    action: "log_only",
+  },
+  {
+    id: "rule-unexpected-visitor",
+    description: "Surface an unexpected front-door visitor during normal hours on the Fire TV, without urgency.",
+    condition: "event.type in (motion, doorbell) && no expected visitor && hour between 6 and 23",
+    action: "show_on_fire_tv",
+  },
+  {
     id: "rule-night-door",
     description: "Flag any door open event between 11pm and 6am as high priority.",
     condition: "event.type === 'door.opened' && hour is between 23 and 6",
@@ -40,6 +52,12 @@ export const rules: HouseholdRule[] = [
 ];
 
 export const expectedVisitors: ExpectedVisitor[] = [];
+
+export function addExpectedVisitor(visitor: Omit<ExpectedVisitor, "id">): ExpectedVisitor {
+  const full: ExpectedVisitor = { id: randomUUID(), ...visitor };
+  expectedVisitors.push(full);
+  return full;
+}
 
 function seedReminder(): Reminder {
   return {
@@ -62,6 +80,7 @@ export const alerts: Alert[] = [];
 export function resetHousehold(): void {
   events.length = 0;
   alerts.length = 0;
+  expectedVisitors.length = 0;
   reminders.length = 0;
   reminders.push(seedReminder());
 }

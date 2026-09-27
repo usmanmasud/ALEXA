@@ -15,10 +15,13 @@ export interface HouseholdEvent {
   /** Filled in by the context engine, not the raw source. */
   importance?: Severity;
   reasoning?: string;
+  /** What produced the assessment: a named household rule, Amazon Bedrock, or the fail-safe default. */
+  decidedBy?: string;
   acknowledged?: boolean;
 }
 
 export interface ExpectedVisitor {
+  id: string;
   label: string; // "delivery", "guest:mom", etc.
   windowStart: string; // ISO 8601
   windowEnd: string; // ISO 8601

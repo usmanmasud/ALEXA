@@ -15,8 +15,8 @@ function isNightHours(date: Date): boolean {
   return hour >= 23 || hour < 6;
 }
 
-function hasExpectedVisitor(now: Date): boolean {
-  return expectedVisitors.some((v) => {
+function findExpectedVisitor(now: Date) {
+  return expectedVisitors.find((v) => {
     const start = new Date(v.windowStart).getTime();
     const end = new Date(v.windowEnd).getTime();
     return now.getTime() >= start && now.getTime() <= end;
@@ -28,6 +28,8 @@ interface Assessment {
   reasoning: string;
   shouldAlert: boolean;
   suggestedActions: string[];
+  /** Rule id, "bedrock", or "default" — surfaced on the Fire TV so every decision is explainable. */
+  decidedBy: string;
 }
 
 function assessEventByRules(event: HouseholdEvent): Assessment | null {
@@ -35,14 +37,15 @@ function assessEventByRules(event: HouseholdEvent): Assessment | null {
 
   if (event.type === "motion" || event.type === "doorbell") {
     const night = isNightHours(now);
-    const expected = hasExpectedVisitor(now);
+    const expected = findExpectedVisitor(now);
 
     if (expected) {
       return {
         importance: "info",
-        reasoning: "Motion matches an expected visitor window, no interruption needed.",
+        reasoning: `Front-door activity matches the expected ${expected.label}, so NEXUS didn't interrupt anyone.`,
         shouldAlert: false,
         suggestedActions: [],
+        decidedBy: "rule-expected-visitor",
       };
     }
 
@@ -52,6 +55,7 @@ function assessEventByRules(event: HouseholdEvent): Assessment | null {
         reasoning: "Front-door activity outside expected hours with no visitor on record.",
         shouldAlert: true,
         suggestedActions: ["view", "notify_guardian"],
+        decidedBy: "rule-night-door",
       };
     }
 
@@ -60,6 +64,7 @@ function assessEventByRules(event: HouseholdEvent): Assessment | null {
       reasoning: "Unexpected visitor at the front door during normal hours.",
       shouldAlert: true,
       suggestedActions: ["view", "dismiss"],
+      decidedBy: "rule-unexpected-visitor",
     };
   }
 
@@ -77,6 +82,7 @@ function assessEventByRules(event: HouseholdEvent): Assessment | null {
         )} minutes.`,
         shouldAlert: true,
         suggestedActions: ["check_in", "notify_guardian"],
+        decidedBy: "rule-missed-medication",
       };
     }
 
@@ -85,6 +91,28 @@ function assessEventByRules(event: HouseholdEvent): Assessment | null {
       reasoning: "Reminder missed but still within the normal grace period.",
       shouldAlert: false,
       suggestedActions: [],
+      decidedBy: "rule-missed-medication",
+    };
+  }
+
+  if (event.type === "check_in.started") {
+    const member = members.find((m) => m.id === event.data.memberId);
+    return {
+      importance: "info",
+      reasoning: `Check-in started with ${member?.name ?? "a household member"}.`,
+      shouldAlert: false,
+      suggestedActions: [],
+      decidedBy: "rule-missed-medication",
+    };
+  }
+
+  if (event.type === "guardian.notified") {
+    return {
+      importance: "info",
+      reasoning: "The household guardian was notified.",
+      shouldAlert: false,
+      suggestedActions: [],
+      decidedBy: "system",
     };
   }
 
@@ -94,17 +122,22 @@ function assessEventByRules(event: HouseholdEvent): Assessment | null {
       reasoning: "Door opened during a configured restricted period.",
       shouldAlert: true,
       suggestedActions: ["notify_guardian"],
+      decidedBy: "rule-night-door",
     };
   }
 
   return null;
 }
 
+// When no rule matches and Bedrock can't be reached, NEXUS fails toward the
+// human: an event it couldn't assess is shown without urgency rather than
+// silently dropped. Quiet is a decision, and NEXUS only makes it with a reason.
 const DEFAULT_ASSESSMENT: Assessment = {
-  importance: "info",
-  reasoning: "No rule matched and reasoning was unavailable; logged for context only.",
-  shouldAlert: false,
-  suggestedActions: [],
+  importance: "notice",
+  reasoning: "NEXUS couldn't assess this event automatically, so it's shown here rather than dropped.",
+  shouldAlert: true,
+  suggestedActions: ["view", "dismiss"],
+  decidedBy: "default",
 };
 
 export async function assessEvent(event: HouseholdEvent): Promise<Assessment> {
@@ -112,7 +145,7 @@ export async function assessEvent(event: HouseholdEvent): Promise<Assessment> {
   if (byRule) return byRule;
 
   const byBedrock = await reasonWithBedrock(event);
-  if (byBedrock) return byBedrock;
+  if (byBedrock) return { ...byBedrock, decidedBy: "bedrock" };
 
   return DEFAULT_ASSESSMENT;
 }
@@ -121,6 +154,7 @@ export async function processEvent(event: HouseholdEvent): Promise<HouseholdEven
   const assessment = await assessEvent(event);
   event.importance = assessment.importance;
   event.reasoning = assessment.reasoning;
+  event.decidedBy = assessment.decidedBy;
 
   if (assessment.shouldAlert) {
     addAlert({
@@ -144,8 +178,10 @@ function titleFor(event: HouseholdEvent): string {
       return "Check-in suggested";
     case "door.opened.restricted":
       return "Door opened during restricted hours";
-    default:
-      return "Household event";
+    default: {
+      const words = event.type.replace(/[._]/g, " ");
+      return words.charAt(0).toUpperCase() + words.slice(1);
+    }
   }
 }
 
